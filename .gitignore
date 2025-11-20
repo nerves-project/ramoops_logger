@@ -20,5 +20,5 @@ erl_crash.dump
 *.ez
 
 # Ignore package tarball (built via "mix hex.build").
-oops_logger-*.tar
+ramoops_logger-*.tar
 
