@@ -1,12 +1,13 @@
 defmodule RamoopsLogger.MixProject do
   use Mix.Project
 
+  @app :ramoops_logger
   @version "0.3.1"
   @source_url "https://github.com/nerves-project/ramoops_logger"
 
   def project do
     [
-      app: :ramoops_logger,
+      app: @app,
       version: @version,
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
@@ -45,7 +46,11 @@ defmodule RamoopsLogger.MixProject do
   defp package do
     [
       licenses: ["Apache-2.0"],
-      links: %{"GitHub" => @source_url}
+      links: %{
+        "Changelog" => "https://hexdocs.pm/#{@app}/changelog.html",
+        "GitHub" => @source_url,
+        "REUSE Compliance" => "https://api.reuse.software/info/github.com/nerves-project/#{@app}"
+      }
     ]
   end
 
