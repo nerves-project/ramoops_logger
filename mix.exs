@@ -16,8 +16,7 @@ defmodule RamoopsLogger.MixProject do
       docs: docs(),
       dialyzer: [
         flags: [:missing_return, :extra_return, :unmatched_returns, :error_handling, :underspecs]
-      ],
-      preferred_cli_env: %{docs: :docs, "hex.build": :docs, "hex.publish": :docs}
+      ]
     ]
   end
 
@@ -25,6 +24,10 @@ defmodule RamoopsLogger.MixProject do
     [
       extra_applications: [:logger]
     ]
+  end
+
+  def cli do
+    [preferred_envs: %{docs: :docs, "hex.build": :docs, "hex.publish": :docs}]
   end
 
   defp deps do
