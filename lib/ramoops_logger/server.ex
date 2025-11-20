@@ -9,11 +9,6 @@ defmodule RamoopsLogger.Server do
 
   @default_pmsg_path "/dev/pmsg0"
 
-  defmodule State do
-    @moduledoc false
-    defstruct fd: nil, format: nil
-  end
-
   @spec start_link([RamoopsLogger.backend_option()]) :: GenServer.on_start()
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
@@ -56,10 +51,7 @@ defmodule RamoopsLogger.Server do
 
     case open_pmsg(opts) do
       {:ok, fd} ->
-        state = %State{
-          fd: fd,
-          format: Logger.Formatter.compile(nil)
-        }
+        state = %{fd: fd, format: Logger.Formatter.compile(nil)}
 
         {:ok, state}
 
@@ -69,10 +61,10 @@ defmodule RamoopsLogger.Server do
   end
 
   @impl GenServer
-  def handle_call({:configure, opts}, _from, %State{fd: fd} = state) do
+  def handle_call({:configure, opts}, _from, state) do
     opts = merge_and_update_opts(opts)
 
-    _ = File.close(fd)
+    _ = File.close(state.fd)
 
     case open_pmsg(opts) do
       {:ok, new_fd} ->
@@ -86,15 +78,15 @@ defmodule RamoopsLogger.Server do
   end
 
   @impl GenServer
-  def handle_cast({:log, level, message}, %State{fd: fd, format: format} = state) do
-    output = apply_format(format, level, message)
-    _ = IO.binwrite(fd, output)
+  def handle_cast({:log, level, message}, state) do
+    output = apply_format(state.format, level, message)
+    _ = IO.binwrite(state.fd, output)
     {:noreply, state}
   end
 
   @impl GenServer
-  def terminate(_, %State{fd: fd}) do
-    File.close(fd)
+  def terminate(_, state) do
+    File.close(state.fd)
   end
 
   defp merge_and_update_opts(opts) do
