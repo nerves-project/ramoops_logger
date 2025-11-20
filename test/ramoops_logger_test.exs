@@ -11,23 +11,19 @@ defmodule RamoopsLoggerTest do
   @test_recovered_path "__recovered_pmsg"
 
   setup do
-    Logger.remove_backend(:console)
-
     # Start fresh each time
     _ = File.rm(@test_pmsg_file)
     _ = File.rm(@test_recovered_path)
     File.touch!(@test_pmsg_file)
 
-    # Start the RamoopsLogger with the test path
-    Application.put_env(:logger, RamoopsLogger,
+    # Attach the RamoopsLogger handler with the test path
+    RamoopsLogger.attach(
       pmsg_path: @test_pmsg_file,
       recovered_log_path: @test_recovered_path
     )
 
-    Logger.add_backend(RamoopsLogger, flush: true)
-
     on_exit(fn ->
-      Logger.remove_backend(RamoopsLogger)
+      RamoopsLogger.detach()
       _ = File.rm(@test_pmsg_file)
       _ = File.rm(@test_recovered_path)
     end)
@@ -37,35 +33,36 @@ defmodule RamoopsLoggerTest do
 
   test "logs a message" do
     Logger.debug("hello")
-    Logger.flush()
     Process.sleep(100)
 
     assert File.exists?(@test_pmsg_file)
     contents = File.read!(@test_pmsg_file)
-    assert contents =~ "[debug] hello"
+    assert contents =~ "debug"
+    assert contents =~ "hello"
   end
 
-  test "changing configuration" do
-    new_path = @test_pmsg_file <> ".new"
-    _ = File.rm(new_path)
-
-    Logger.configure_backend(RamoopsLogger, pmsg_path: new_path)
-    Logger.info("changing configuration")
-    Logger.flush()
+  test "logs multiple messages" do
+    Logger.info("first message")
+    Logger.warning("second message")
+    Logger.error("third message")
     Process.sleep(100)
 
-    contents = File.read!(new_path)
-    assert contents =~ "changing configuration"
-
-    File.rm!(new_path)
+    assert File.exists?(@test_pmsg_file)
+    contents = File.read!(@test_pmsg_file)
+    assert contents =~ "first message"
+    assert contents =~ "second message"
+    assert contents =~ "third message"
   end
 
   test "provides a reasonable error message for bad pmsg path" do
-    Logger.remove_backend(RamoopsLogger)
-    Application.put_env(:logger, RamoopsLogger, pmsg_path: "/dev/does/not/exist")
+    RamoopsLogger.detach()
 
-    {:error, {reason, _stuff}} = Logger.add_backend(RamoopsLogger)
-    assert reason == "Unable to open '/dev/does/not/exist' (:enoent). RamoopsLogger won't work."
+    {:error, {:handler_not_added, reason}} =
+      RamoopsLogger.attach(pmsg_path: "/dev/does/not/exist")
+
+    assert is_binary(reason)
+    assert reason =~ "Unable to open"
+    assert reason =~ "/dev/does/not/exist"
   end
 
   test "recovered log helpers" do
@@ -77,5 +74,21 @@ defmodule RamoopsLoggerTest do
 
     assert RamoopsLogger.available_log?()
     assert {:ok, "test test test"} == RamoopsLogger.read()
+  end
+
+  test "dump function displays log contents" do
+    File.write!(@test_recovered_path, "crash log content")
+
+    import ExUnit.CaptureIO
+
+    output = capture_io(fn -> RamoopsLogger.dump() end)
+    assert output == "crash log content"
+  end
+
+  test "attach/detach is idempotent" do
+    # Already attached in setup
+    assert :ok = RamoopsLogger.attach()
+    assert :ok = RamoopsLogger.detach()
+    assert :ok = RamoopsLogger.detach()
   end
 end

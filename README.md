@@ -62,26 +62,55 @@ the `/dev/pmsg0` file exists.
 
 ### Update your Elixir project
 
-Once you're satisfied with the Linux, add `ramoops_logger` to your project's
+Once you're satisfied with the Linux configuration, add `ramoops_logger` to your project's
 `mix.exs` dependencies list.
 
 ```elixir
 def deps do
   [
-    {:ramoops_logger, "~> 0.3.0"}
+    {:ramoops_logger, "~> 0.4.0"}
   ]
 end
 ```
 
-Next, update your `config.exs` to tell the Elixir Logger to send log messages to
-the `RamoopsLogger`:
+Next, attach the RamoopsLogger handler to the Erlang logger. You can do this in your
+`config/runtime.exs`:
 
 ```elixir
-use Mix.Config
+# In config/runtime.exs
+:logger.add_handler(:ramoops_logger, RamoopsLogger.Handler, %{})
+```
 
-# Add the RamoopsLogger backend. If you already have a logger configuration, to add
-# RamoopsLogger the only change needed is to add RamoopsLogger to the :backends list.
-config :logger, backends: [RamoopsLogger, :console]
+Or you can attach it programmatically in your application start:
+
+```elixir
+# In your application.ex start function
+def start(_type, _args) do
+  RamoopsLogger.attach()
+  
+  # ... rest of your application setup
+end
+```
+
+### Custom Configuration
+
+If the defaults don't work for your system, you can specify custom paths:
+
+```elixir
+# In config/runtime.exs
+:logger.add_handler(:ramoops_logger, RamoopsLogger.Handler, %{
+  pmsg_path: "/dev/pmsg1",
+  recovered_log_path: "/sys/fs/pstore/pmsg-ramoops-1"
+})
+```
+
+Or programmatically:
+
+```elixir
+RamoopsLogger.attach(
+  pmsg_path: "/dev/pmsg1",
+  recovered_log_path: "/sys/fs/pstore/pmsg-ramoops-1"
+)
 ```
 
 ## IEx Session Usage
