@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 SmartRent
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 defmodule RamoopsLoggerTest do
   use ExUnit.Case, async: false
 

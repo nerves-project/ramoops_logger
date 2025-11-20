@@ -1,7 +1,14 @@
+<!--
+  SPDX-FileCopyrightText: 2020-21 SmartRent
+  SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # RamoopsLogger
 
-[![CircleCI](https://circleci.com/gh/smartrent/ramoops_logger/tree/main.svg?style=svg)](https://circleci.com/gh/smartrent/ramoops_logger/tree/main)
 [![Hex version](https://img.shields.io/hexpm/v/ramoops_logger.svg "Hex version")](https://hex.pm/packages/ramoops_logger)
+[![API docs](https://img.shields.io/hexpm/v/ramoops_logger.svg?label=hexdocs "API docs")](https://hexdocs.pm/ramoops_logger/RamoopsLogger.html)
+[![CircleCI](https://dl.circleci.com/status-badge/img/gh/nerves-project/ramoops_logger/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/nerves-project/ramoops_logger/tree/main)
+[![REUSE status](https://api.reuse.software/badge/github.com/nerves-project/ramoops_logger)](https://api.reuse.software/info/github.com/nerves-project/ramoops_logger)
 
 This is an Elixir Logger backend for forwarding log messages to the [ramoops
 logger](https://www.kernel.org/doc/html/v4.19/admin-guide/ramoops.html) on Linux
@@ -102,17 +109,3 @@ if RamoopsLogger.available_log?() do
   IO.puts("Oops! There's something in the oops log. Check with RamoopsLogger.dump()")
 end
 ```
-
-## License
-
-Copyright (C) 2020-21 SmartRent
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.

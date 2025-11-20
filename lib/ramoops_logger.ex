@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2019 SmartRent
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 defmodule RamoopsLogger do
   @moduledoc """
   This is an in-memory backend for the Elixir Logger that can survive reboots.
