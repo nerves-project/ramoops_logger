@@ -6,6 +6,7 @@ defmodule RamoopsLogger.Server do
   @moduledoc false
 
   use GenServer
+  require Logger
 
   @default_pmsg_path "/dev/pmsg0"
 
@@ -56,7 +57,8 @@ defmodule RamoopsLogger.Server do
         {:ok, state}
 
       {:error, reason} ->
-        {:stop, reason}
+        Logger.error(reason)
+        :ignore
     end
   end
 
@@ -99,12 +101,11 @@ defmodule RamoopsLogger.Server do
   defp open_pmsg(opts) do
     path = Keyword.get(opts, :pmsg_path, @default_pmsg_path)
 
-    case File.open(path, [:append]) do
-      {:ok, fd} ->
-        {:ok, fd}
-
-      {:error, reason} ->
-        {:error, "Unable to open '#{path}' (#{inspect(reason)}). RamoopsLogger won't work."}
+    with true <- File.exists?(path),
+         {:ok, fd} <- File.open(path, [:append]) do
+      {:ok, fd}
+    else
+      _ -> {:error, "Unable to open '#{path}'. RamoopsLogger won't work."}
     end
   end
 

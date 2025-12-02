@@ -48,6 +48,7 @@ defmodule RamoopsLoggerTest do
   test "changing configuration" do
     new_path = @test_pmsg_file <> ".new"
     _ = File.rm(new_path)
+    File.touch!(new_path)
 
     Logger.configure_backend(RamoopsLogger, pmsg_path: new_path)
     Logger.info("changing configuration")
@@ -58,14 +59,6 @@ defmodule RamoopsLoggerTest do
     assert contents =~ "changing configuration"
 
     File.rm!(new_path)
-  end
-
-  test "provides a reasonable error message for bad pmsg path" do
-    Logger.remove_backend(RamoopsLogger)
-    Application.put_env(:logger, RamoopsLogger, pmsg_path: "/dev/does/not/exist")
-
-    {:error, {reason, _stuff}} = Logger.add_backend(RamoopsLogger)
-    assert reason == "Unable to open '/dev/does/not/exist' (:enoent). RamoopsLogger won't work."
   end
 
   test "recovered log helpers" do
