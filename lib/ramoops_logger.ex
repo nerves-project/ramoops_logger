@@ -66,8 +66,8 @@ defmodule RamoopsLogger do
   """
   @spec dump() :: :ok | {:error, File.posix()}
   def dump() do
-    case File.read(recovered_log_path()) do
-      {:ok, contents} -> IO.binwrite(contents)
+    case read() do
+      {:ok, contents} -> contents |> String.replace_invalid() |> IO.write()
       error -> error
     end
   end
