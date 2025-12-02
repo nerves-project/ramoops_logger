@@ -9,7 +9,7 @@ defmodule RamoopsLogger.MixProject do
     [
       app: @app,
       version: @version,
-      elixir: "~> 1.13",
+      elixir: "~> 1.16",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: description(),
