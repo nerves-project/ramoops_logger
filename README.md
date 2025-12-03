@@ -10,14 +10,23 @@
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/nerves-project/ramoops_logger/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/nerves-project/ramoops_logger/tree/main)
 [![REUSE status](https://api.reuse.software/badge/github.com/nerves-project/ramoops_logger)](https://api.reuse.software/info/github.com/nerves-project/ramoops_logger)
 
-This is an Elixir Logger backend for forwarding log messages to the [ramoops
-logger](https://www.kernel.org/doc/html/v4.19/admin-guide/ramoops.html) on Linux
-and Nerves systems. Messages sent to this log are written to a special area of
-DRAM that can be recovered after reboots or very short power outages.
+This library uses the Linux
+[pstore](https://www.kernel.org/doc/html/v6.12/admin-guide/pstore-blk.html) to
+capture diagnostic information for unexpected reboots. The `pstore` is a special
+block of DRAM managed by the kernel that can survive reboots. This works
+independent of filesystems where logs are normally kept and since it's
+in-memory, there's no loss on unexpected reboots due to caching.
 
-Here's a demo video:
+This library does require a properly configured kernel to work. In particular,
+it uses the user application accessible `pmsg` circular buffer.
 
-[![RamoopsLogger Demo](http://img.youtube.com/vi/vpD511Bk5rU/0.jpg)](http://www.youtube.com/watch?v=vpD511Bk5rU)
+Here are some features:
+
+* Automatically record log messages of `:error` severity and higher
+* Retrieve logs from the previous reboot
+
+For historical reasons, some `pstore` functionality was called `ramoops` and
+that affects the naming of this library.
 
 ## Configuration
 
@@ -28,16 +37,23 @@ driver automatically and you can skip the Linux configuration.
 ### Linux configuration
 
 The most important part of using the RamoopsLogger is ensuring that the `pstore`
-device driver is enabled and configured in your Linux kernel. The device driver
-writes logs to a fixed location in DRAM that is platform-specific. If you are
-lucky, someone will have determined a good place to store the logs. The official
-Nerves Project systems all have a small amount of memory allocated for use by
-the `pstore` driver. If you are not using Nerves, it's possible that one of the
-device tree files (for ARM platforms) may be helpful.
+device driver is enabled and configured in your Linux kernel. Most of the
+official Nerves Project systems do this already.
 
-If you're not using an official Nerves system, here's an example device tree
-fragment that would need to be updated for your device, but may be helpful as a
-start.
+The required kernel options are:
+
+```text
+CONFIG_PSTORE=y
+CONFIG_PSTORE_PMSG=y
+CONFIG_PSTORE_RAM=y
+```
+
+Then you'll need to allocate part of DRAM to use for `pstore` and configure
+memory sizes. Please refer to Linux `pstore` documentation.
+
+If you're using a system that uses device trees or device tree overlays, the
+following snippet may help you find the parts that need configuration. Please,
+please don't copy verbatim and expect it to work.
 
 ```c
 reserved-memory {
@@ -48,17 +64,17 @@ reserved-memory {
         ramoops@88d00000{
                 compatible = "ramoops";
                 reg = <0x88d00000 0x100000>;
-                ecc-size = <16>;
-                record-size     = <0x00020000>;
-                console-size    = <0x00020000>;
-                ftrace-size     = <0>;
-                pmsg-size       = <0x00020000>;
+                ecc-size = <16>; /* Optional */
+                record-size     = <0x00020000>; /* Optional */
+                console-size    = <0x00020000>; /* Optional */
+                ftrace-size     = <0>; /* Optional */
+                pmsg-size       = <0x00020000>; /* Important for RamoopsLogger */
         };
 };
 ```
 
-One way of testing whether the `pstore` driver is available is to check whether
-the `/dev/pmsg0` file exists.
+Look for `/dev/pmsg0` to verify that Linux loaded the `pstore` driver and it's
+properly configured.
 
 ### Update your Elixir project
 
@@ -73,15 +89,19 @@ def deps do
 end
 ```
 
-Next, update your `config.exs` to tell the Elixir Logger to send log messages to
-the `RamoopsLogger`:
+No application configuration is necessary as the defaults should all be fine. If
+you do need to change something, here are the available options for your
+`config.exs` or `target.exs`:
+
 
 ```elixir
-use Mix.Config
+import Config
 
-# Add the RamoopsLogger backend. If you already have a logger configuration, to add
-# RamoopsLogger the only change needed is to add RamoopsLogger to the :backends list.
-config :logger, backends: [RamoopsLogger, :console]
+config :ramoops_logger,
+  pmsg_path: "/dev/pmsg0",              # If you have more than one pmsg buffer
+  pstore_mount_point: "/sys/fs/pstore", # Mount pstore in a custom location
+  pmsg_log: "pmsg-ramoops-0",           # Analogous to pmsg_path for more than one pmsg buffer
+  auto_mount?: true                     # Mount pstore automatically
 ```
 
 ## IEx Session Usage
@@ -96,16 +116,4 @@ To read the last ramoops log and it to a variable run:
 
 ```elixir
 iex> {:ok, contents} = RamoopsLogger.read()
-```
-
-## Nerves Automatic Log Check
-
-If you want to have your system check if there is an oops log available, and you
-are using Nerves, you can add this to your `rootfs_overlay/etc/iex.exs` file in
-your firmware project:
-
-```elixir
-if RamoopsLogger.available_log?() do
-  IO.puts("Oops! There's something in the oops log. Check with RamoopsLogger.dump()")
-end
 ```
