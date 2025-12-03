@@ -4,62 +4,11 @@
 #
 defmodule RamoopsLogger do
   @moduledoc """
-  This is an in-memory backend for the Elixir Logger that can survive reboots.
-
-  Install it by adding it to your `config.exs`:
-
-  ```elixir
-  use Mix.Config
-
-  config :logger, backends: [:console, RamoopsLogger]
-
-  # The defaults
-  config :logger, RamoopsLogger,
-    pmsg_path: "/dev/pmsg1",
-    recovered_log_path: "/sys/fs/pstore/pmsg-ramoops-1"
-  ```
-
-  Or add manually:
-
-  ```elixir
-  iex> Logger.add_backend(RamoopsLogger)
-  :ok
-  # Configure only if the defaults don't work on your system
-  iex> Logger.configure(RamoopsLogger, pmsg_path: "/dev/pmsg1")
-  ```
+  This module provides an in-memory log handler for the Erlang logger that can survive reboots.
 
   After a reboot, you can check if a log exists by calling `available_log?/0`.
   """
-
-  @behaviour :gen_event
-
-  alias RamoopsLogger.Server
-
-  @default_pmsg_log_path "/sys/fs/pstore/pmsg-ramoops-0"
-
-  @typedoc """
-  Options for configuring the backend:
-
-  * `:pmsg_path` - Path to pmsg device (default is `/dev/pmsg0`)
-  * `:recovered_log_path` - Path to recovered log files from previous boots
-     (default is `/sys/fs/pstore/pmsg-ramoops-0`)
-
-  These are either specified in the Application config (e.g., `config.exs`) like
-  this:
-
-  ```elixir
-  config :logger, RamoopsLogger,
-    pmsg_path: "/dev/pmsg1",
-    recovered_log_path: "/sys/fs/pstore/pmsg-ramoops-1"
-  ```
-
-  Or configured at runtime like:
-
-  ```elixir
-  iex> Logger.configure(RamoopsLogger, pmsg_path: "/dev/pmsg1")
-  ```
-  """
-  @type backend_option :: {:pmsg_path, Path.t()} | {:recovered_log_path, Path.t()}
+  require Logger
 
   @doc """
   Dump the contents of the ramoops pstore file to the console
@@ -79,7 +28,9 @@ defmodule RamoopsLogger do
   """
   @spec read() :: {:ok, binary()} | {:error, File.posix()}
   def read() do
-    File.read(recovered_log_path())
+    with :ok <- maybe_mount_pstore() do
+      File.read(recovered_log_path())
+    end
   end
 
   @doc """
@@ -87,7 +38,10 @@ defmodule RamoopsLogger do
   """
   @spec available_log?() :: boolean()
   def available_log?() do
-    File.exists?(recovered_log_path())
+    case maybe_mount_pstore() do
+      :ok -> File.exists?(recovered_log_path())
+      _ -> false
+    end
   end
 
   @doc """
@@ -97,73 +51,52 @@ defmodule RamoopsLogger do
   """
   @spec recovered_log_path() :: Path.t()
   def recovered_log_path() do
-    env = Application.get_env(:logger, __MODULE__, [])
-    Keyword.get(env, :recovered_log_path, @default_pmsg_log_path)
+    pmsg_log = Application.fetch_env!(:ramoops_logger, :pmsg_log)
+    pstore_mount_point = Application.fetch_env!(:ramoops_logger, :pstore_mount_point)
+
+    Path.join(pstore_mount_point, pmsg_log)
   end
 
-  #
-  # Logger backend callbacks
-  #
-  @impl :gen_event
-  def init(__MODULE__) do
-    init({__MODULE__, []})
-  end
+  defp maybe_mount_pstore() do
+    pstore_mount_point = Application.fetch_env!(:ramoops_logger, :pstore_mount_point)
+    parent_dir = Path.dirname(pstore_mount_point)
 
-  def init({__MODULE__, opts}) when is_list(opts) do
-    env = Application.get_env(:logger, __MODULE__, [])
-    opts = Keyword.merge(env, opts)
-    Application.put_env(:logger, __MODULE__, opts)
-
-    case Server.start_link(opts) do
-      {:ok, pid} ->
-        {:ok, pid}
-
-      :ignore ->
-        {:error, :ignore}
-
-      error ->
-        error
+    with :no <- ok_to_skip(),
+         {:ok, parent_stat} <- File.stat(parent_dir),
+         {:ok, pstore_stat} <- File.stat(pstore_mount_point) do
+      # The mount point should exist, but it hasn't been mounted if it's still the same
+      # device as the parent directory.
+      if parent_stat.major_device == pstore_stat.major_device and
+           parent_stat.minor_device == pstore_stat.minor_device do
+        mount_pstore(pstore_mount_point)
+      else
+        :ok
+      end
     end
   end
 
-  @impl :gen_event
-  def handle_event({_level, gl, _event}, state) when node(gl) != node() do
-    # Ignore per Elixir Logger documentation
-    {:ok, state}
+  defp ok_to_skip() do
+    case Application.fetch_env!(:ramoops_logger, :auto_mount?) do
+      true -> :no
+      _ -> :ok
+    end
   end
 
-  def handle_event({level, _gl, message}, state) do
-    Server.log(state, level, message)
-    {:ok, state}
+  defp mount_pstore(pstore_mount_point) do
+    case System.cmd("mount", ["-t", "pstore", "pstore", pstore_mount_point]) do
+      {_, 0} -> :ok
+      _ -> {:error, :eio}
+    end
   end
 
-  def handle_event(:flush, state) do
-    # No flushing needed for RamoopsLogger
-    {:ok, state}
-  end
+  # Notify anyone who upgrades to not forget to remove the Elixir Logger backend configuration
+  @doc false
+  @spec init(term()) :: {:error, :ignore}
+  def init(_) do
+    Logger.error(
+      "RamoopsLogger is no longer an Elixir Logger backend. Please remove it from your Logger config"
+    )
 
-  @impl :gen_event
-  def handle_call({:configure, opts}, state) do
-    {:ok, Server.configure(state, opts), state}
-  end
-
-  def handle_call(_request, state) do
-    # Ignore to avoid crashing on bad messages
-    {:ok, {:error, :unimplemented}, state}
-  end
-
-  @impl :gen_event
-  def handle_info(_, state) do
-    {:ok, state}
-  end
-
-  @impl :gen_event
-  def code_change(_old_vsn, state, _extra) do
-    {:ok, state}
-  end
-
-  @impl :gen_event
-  def terminate(_reason, state) do
-    Server.stop(state)
+    {:error, :ignore}
   end
 end
