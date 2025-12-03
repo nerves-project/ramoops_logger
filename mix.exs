@@ -5,11 +5,16 @@ defmodule RamoopsLogger.MixProject do
   @version "0.3.2"
   @source_url "https://github.com/nerves-project/ramoops_logger"
 
+  @otp_release :erlang.system_info(:otp_release) |> List.to_integer()
+  if @otp_release < 27 do
+    raise "RamoopsLogger requires OTP 27 or later. You are using OTP #{@otp_release}."
+  end
+
   def project do
     [
       app: @app,
       version: @version,
-      elixir: "~> 1.16",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: description(),
