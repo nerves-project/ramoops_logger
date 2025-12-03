@@ -5,68 +5,60 @@
 defmodule RamoopsLoggerTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   require Logger
 
-  @test_pmsg_file "__test_pmsg"
-  @test_recovered_path "__recovered_pmsg"
+  @test_dir "__test"
+  @test_pmsg_file Path.join(@test_dir, "dev_pmsg")
+  @test_pstore_mount_point Path.join(@test_dir, "sys_fs_pstore")
 
   setup do
-    Logger.remove_backend(:console)
-
     # Start fresh each time
-    _ = File.rm(@test_pmsg_file)
-    _ = File.rm(@test_recovered_path)
+    Application.stop(:ramoops_logger)
+    _ = File.rm_rf!(@test_dir)
+    File.mkdir_p!(@test_pstore_mount_point)
     File.touch!(@test_pmsg_file)
 
     # Start the RamoopsLogger with the test path
-    Application.put_env(:logger, RamoopsLogger,
-      pmsg_path: @test_pmsg_file,
-      recovered_log_path: @test_recovered_path
-    )
+    Application.put_env(:ramoops_logger, :pmsg_path, @test_pmsg_file)
+    Application.put_env(:ramoops_logger, :pstore_mount_point, @test_pstore_mount_point)
+    Application.put_env(:ramoops_logger, :auto_mount?, false)
 
-    Logger.add_backend(RamoopsLogger, flush: true)
+    Application.start(:ramoops_logger)
 
     on_exit(fn ->
-      Logger.remove_backend(RamoopsLogger)
-      _ = File.rm(@test_pmsg_file)
-      _ = File.rm(@test_recovered_path)
+      _ = File.rm_rf!(@test_dir)
     end)
 
     :ok
   end
 
-  test "logs a message" do
-    Logger.debug("hello")
-    Logger.flush()
+  test "logs error messages" do
+    Logger.debug("debug message")
+    Logger.error("error message")
     Process.sleep(100)
 
     assert File.exists?(@test_pmsg_file)
     contents = File.read!(@test_pmsg_file)
-    assert contents =~ "[debug] hello"
+
+    # "unknown" is the application name that gets logged
+    assert contents =~ "unknown error message"
+    refute contents =~ "debug"
   end
 
-  test "changing configuration" do
-    new_path = @test_pmsg_file <> ".new"
-    _ = File.rm(new_path)
-    File.touch!(new_path)
-
-    Logger.configure_backend(RamoopsLogger, pmsg_path: new_path)
-    Logger.info("changing configuration")
-    Logger.flush()
-    Process.sleep(100)
-
-    contents = File.read!(new_path)
-    assert contents =~ "changing configuration"
-
-    File.rm!(new_path)
+  test "logs error when used as an Elixir backend" do
+    logs = capture_log(fn -> RamoopsLogger.init(:anything) end)
+    assert logs =~ "RamoopsLogger is no longer an Elixir Logger backend"
   end
 
   test "recovered log helpers" do
-    assert RamoopsLogger.recovered_log_path() == @test_recovered_path
+    recovered_path = Path.join(@test_pstore_mount_point, "pmsg-ramoops-0")
+    assert RamoopsLogger.recovered_log_path() == recovered_path
 
     refute RamoopsLogger.available_log?()
 
-    File.write!(@test_recovered_path, "test test test")
+    File.write!(recovered_path, "test test test")
 
     assert RamoopsLogger.available_log?()
     assert {:ok, "test test test"} == RamoopsLogger.read()

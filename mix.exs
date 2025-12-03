@@ -28,7 +28,14 @@ defmodule RamoopsLogger.MixProject do
 
   def application do
     [
-      extra_applications: [:logger]
+      env: [
+        pmsg_path: "/dev/pmsg0",
+        pstore_mount_point: "/sys/fs/pstore",
+        pmsg_log: "pmsg-ramoops-0",
+        auto_mount?: true
+      ],
+      extra_applications: [:logger, :sasl],
+      mod: {RamoopsLogger.Application, []}
     ]
   end
 
