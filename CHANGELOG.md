@@ -5,6 +5,19 @@
 
 # Changelog
 
+## v0.3.2
+
+This is the first release after transferring RamoopsLogger from SmartRent.
+A huge thanks to SmartRent for creating and maintaining this library for so
+long.
+
+* Changes
+  * Add REUSE metadata throughout so that copyright and licensing are clear
+  * Fix a hang issue with Erlang/OTP 28 when calling `RamoopsLogger.dump/0`
+  * Don't create `/dev/pmsg0` if the pstore driver isn't loaded or isn't
+    configured correctly. This prevents log messages from accumulating in the
+    `/dev` tmpfs.
+
 ## v0.3.1
 
 * Changes
