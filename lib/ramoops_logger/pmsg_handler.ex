@@ -34,7 +34,7 @@ defmodule RamoopsLogger.PmsgHandler do
     # Preserve the writer across config changes
     merged =
       Map.merge(old_config, new_config, fn
-        :writer, old_device, _new -> old_device
+        :writer, old_writer, _new -> old_writer
         _key, _old, new -> new
       end)
 
