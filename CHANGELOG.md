@@ -5,6 +5,16 @@
 
 # Changelog
 
+## v0.4.0
+
+This release replaces the Elixir logger backend with an Erlang logger handler.
+Please remove `RamoopsLogger` from your logger backends configuration.
+
+* Changes
+  * Require OTP 27 and later. OTP 26 users are encouraged to stay with v0.3.2.
+  * Limit pmsg logging to error severity to limit overhead of logging and
+    overflowing the small pstore buffers.
+
 ## v0.3.2
 
 This is the first release after transferring RamoopsLogger from SmartRent.

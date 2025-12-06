@@ -2,7 +2,7 @@ defmodule RamoopsLogger.MixProject do
   use Mix.Project
 
   @app :ramoops_logger
-  @version "0.3.2"
+  @version "0.4.0"
   @source_url "https://github.com/nerves-project/ramoops_logger"
 
   @otp_release :erlang.system_info(:otp_release) |> List.to_integer()
