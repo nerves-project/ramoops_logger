@@ -7,6 +7,7 @@
 
 [![Hex version](https://img.shields.io/hexpm/v/ramoops_logger.svg "Hex version")](https://hex.pm/packages/ramoops_logger)
 [![API docs](https://img.shields.io/hexpm/v/ramoops_logger.svg?label=hexdocs "API docs")](https://ramoops-logger.hexdocs.pm/RamoopsLogger.html)
+[![Nerves compatibility](https://compatibility.nerves-project.org/badge/ramoops_logger.svg)](https://compatibility.nerves-project.org/packages/ramoops_logger)
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/nerves-project/ramoops_logger/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/nerves-project/ramoops_logger/tree/main)
 [![REUSE status](https://api.reuse.software/badge/github.com/nerves-project/ramoops_logger)](https://api.reuse.software/info/github.com/nerves-project/ramoops_logger)
 
