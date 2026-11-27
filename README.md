@@ -90,6 +90,19 @@ def deps do
 end
 ```
 
+Or, if your project uses [Igniter](https://hex.pm/packages/igniter), run:
+
+```sh
+mix igniter.install ramoops_logger
+```
+
+The installer adds the dependency and removes `RamoopsLogger` from any
+`config :logger, backends: [...]` list left over from v0.3 and earlier. It only
+writes configuration for the options you pass: `--pmsg-path`,
+`--pstore-mount-point`, `--pmsg-log` and `--no-pstore-auto-mount`. These map to
+the `config :ramoops_logger` keys below and go in `config/target.exs` in Nerves
+projects. It can't check or change the Linux configuration described above.
+
 No application configuration is necessary as the defaults should all be fine. If
 you do need to change something, here are the available options for your
 `config.exs` or `target.exs`:
