@@ -21,7 +21,8 @@ defmodule RamoopsLogger.MixProject do
       package: package(),
       docs: docs(),
       dialyzer: [
-        flags: [:missing_return, :extra_return, :unmatched_returns, :error_handling, :underspecs]
+        flags: [:missing_return, :extra_return, :unmatched_returns, :error_handling, :underspecs],
+        plt_add_apps: [:igniter, :sourceror, :mix]
       ]
     ]
   end
@@ -45,6 +46,7 @@ defmodule RamoopsLogger.MixProject do
 
   defp deps do
     [
+      {:igniter, "~> 0.6", optional: true, runtime: false},
       {:ex_doc, "~> 0.19", only: :docs, runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:test, :dev], runtime: false}
